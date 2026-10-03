@@ -8,7 +8,6 @@ import org.springframework.retry.policy.MaxAttemptsRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 import ru.practicum.EndpointHitDto;
 import ru.practicum.ViewStatsDto;
 
@@ -69,19 +68,17 @@ public class StatsClientImpl implements StatsClient {
     @Override
     public List<ViewStatsDto> getStats(String start, String end, List<String> uris, boolean unique) {
         try {
-            UriComponentsBuilder builder = UriComponentsBuilder
-                    .fromHttpUrl(makeUri("/stats").toString())
-                    .queryParam("start", start)
-                    .queryParam("end", end)
-                    .queryParam("unique", unique);
+            String safeStart = start.replace(" ", "%20");
+            String safeEnd = end.replace(" ", "%20");
+
+            StringBuilder path = new StringBuilder(
+                    "/stats?start=" + safeStart + "&end=" + safeEnd + "&unique=" + unique);
 
             if (uris != null && !uris.isEmpty()) {
-                builder.queryParam("uris", String.join(",", uris));
+                path.append("&uris=").append(String.join(",", uris));
             }
 
-            URI uri = builder.build().encode().toUri();
-
-            ViewStatsDto[] response = restTemplate.getForObject(uri, ViewStatsDto[].class);
+            ViewStatsDto[] response = restTemplate.getForObject(makeUri(path.toString()), ViewStatsDto[].class);
             return response == null ? List.of() : Arrays.asList(response);
         } catch (Exception e) {
             log.error("Ошибка получения статистики: {}", e.getMessage());
