@@ -10,7 +10,10 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
         "ru.practicum.common",
         "ru.practicum.client"
 })
-@EnableFeignClients(basePackages = "ru.practicum.client")
+@EnableFeignClients(basePackages = {
+        "ru.practicum.request.client",
+        "ru.practicum.client"
+})
 public class RequestServiceApp {
     public static void main(String[] args) {
         SpringApplication.run(RequestServiceApp.class, args);
