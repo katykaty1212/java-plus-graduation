@@ -71,8 +71,8 @@ public class PrivateEventController {
     public EventRequestStatusUpdateResult changeRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @Valid @RequestBody(required = false) EventRequestStatusUpdateRequest updateRequest) {
-        if (updateRequest == null || updateRequest.getRequestIds() == null || updateRequest.getRequestIds().isEmpty()) {
+            @RequestBody(required = false) EventRequestStatusUpdateRequest updateRequest) {
+        if (updateRequest == null) {
             throw new ValidationException("Тело запроса обязательно");
         }
         return eventService.changeRequestStatus(userId, eventId, updateRequest);
