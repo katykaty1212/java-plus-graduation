@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.EndpointHitDto;
 import ru.practicum.ViewStatsDto;
-import ru.practicum.exception.ValidationException;
+import ru.practicum.ValidationException;
 import ru.practicum.model.EndpointHit;
 import ru.practicum.repository.StatsRepository;
 
