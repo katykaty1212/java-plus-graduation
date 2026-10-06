@@ -20,5 +20,9 @@ spring:
       schema-locations: classpath:schema.sql
       continue-on-error: false
 
+feign:
+  httpclient:
+    enabled: true
+
 stats:
   service-id: stats-server
