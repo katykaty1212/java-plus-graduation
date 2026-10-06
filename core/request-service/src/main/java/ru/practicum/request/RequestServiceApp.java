@@ -7,9 +7,10 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @SpringBootApplication(scanBasePackages = {
         "ru.practicum.request",
         "ru.practicum.exception",
-        "ru.practicum.common"
+        "ru.practicum.common",
+        "ru.practicum.client"
 })
-@EnableFeignClients
+@EnableFeignClients(basePackages = "ru.practicum.client")
 public class RequestServiceApp {
     public static void main(String[] args) {
         SpringApplication.run(RequestServiceApp.class, args);
