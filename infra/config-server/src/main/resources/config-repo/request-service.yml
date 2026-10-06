@@ -3,7 +3,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/ewm
+    url: jdbc:postgresql://localhost:5432/ewm?currentSchema=public
     username: root
     password: root
     driver-class-name: org.postgresql.Driver
@@ -14,8 +14,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql
-      continue-on-error: false
+#  sql:
+#    init:
+#      mode: always
+#      schema-locations: classpath:schema.sql
+#      continue-on-error: false
