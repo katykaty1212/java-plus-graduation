@@ -14,11 +14,11 @@ spring:
     properties:
       hibernate:
         format_sql: true
-#  sql:
-#    init:
-#      mode: always
-#      schema-locations: classpath:schema.sql
-#      continue-on-error: false
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: false
 
 stats:
   service-id: stats-server
