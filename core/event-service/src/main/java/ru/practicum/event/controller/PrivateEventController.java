@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ import java.util.List;
 @RequestMapping("/users/{userId}/events")
 @RequiredArgsConstructor
 @Validated
+@Slf4j
 public class PrivateEventController {
 
     private final PrivateEventService eventService;
@@ -71,10 +73,9 @@ public class PrivateEventController {
     public EventRequestStatusUpdateResult changeRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @RequestBody(required = false) EventRequestStatusUpdateRequest updateRequest) {
-        if (updateRequest == null) {
-            throw new ValidationException("Тело запроса обязательно");
-        }
-        return eventService.changeRequestStatus(userId, eventId, updateRequest);
+            @RequestBody(required = false) String rawBody) {
+        log.error("PATCH RAW BODY: [{}], isNull={}, length={}",
+                rawBody, rawBody == null, rawBody == null ? -1 : rawBody.length());
+        throw new RuntimeException("STOP_DEBUG: rawBody=[" + rawBody + "]");
     }
 }
