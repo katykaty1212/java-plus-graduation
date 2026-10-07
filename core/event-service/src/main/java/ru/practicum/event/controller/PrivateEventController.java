@@ -1,19 +1,28 @@
 package ru.practicum.event.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.service.PrivateEventService;
 import ru.practicum.request.ParticipationRequestDto;
+import ru.practicum.request.RequestStatus;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/users/{userId}/events")
@@ -69,10 +78,43 @@ public class PrivateEventController {
 
     // 6. Изменение статуса (подтверждение/отклонение) заявок на участие в событии
     @PatchMapping("/{eventId}/requests")
-    public EventRequestStatusUpdateResult changeRequestStatus(
+    public ResponseEntity<?> changeRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @Valid @RequestBody EventRequestStatusUpdateRequest updateRequest) {
-        return eventService.changeRequestStatus(userId, eventId, updateRequest);
+            HttpServletRequest request) throws IOException {
+
+        String contentType = request.getContentType();
+        String rawBody = new String(request.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+        // Вариант 3: stdout — не зависит от логгера
+        System.out.println("PATCH_DIAG contentType=" + contentType
+                + " bodyLen=" + rawBody.length()
+                + " body=" + rawBody);
+        System.out.println("PATCH_DIAG RequestStatus.values=" + Arrays.toString(RequestStatus.values()));
+        System.out.println("PATCH_DIAG RequestStatus.class=" + RequestStatus.class
+                .getProtectionDomain().getCodeSource().getLocation());
+
+        // Вариант 1: заголовки — попадут в HTML-отчёт Newman
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("X-Diag-CT", String.valueOf(contentType));
+        headers.add("X-Diag-Len", String.valueOf(rawBody.length()));
+        headers.add("X-Diag-Body",
+                rawBody.length() > 80 ? rawBody.substring(0, 80) : rawBody);
+
+        try {
+            EventRequestStatusUpdateRequest parsed =
+                    new ObjectMapper().readValue(rawBody, EventRequestStatusUpdateRequest.class);
+            headers.add("X-Diag-Parse", "OK");
+            return ResponseEntity.ok().headers(headers)
+                    .body(eventService.changeRequestStatus(userId, eventId, parsed));
+        } catch (Exception e) {
+            headers.add("X-Diag-Parse", "FAIL");
+            headers.add("X-Diag-Ex", e.getClass().getSimpleName());
+            headers.add("X-Diag-Msg",
+                    String.valueOf(e.getMessage()).replaceAll("[\\r\\n]", " "));
+            return ResponseEntity.status(409).headers(headers)
+                    .body(Map.of("exception", e.getClass().getName(),
+                            "message", String.valueOf(e.getMessage())));
+        }
     }
 }
