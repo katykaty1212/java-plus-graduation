@@ -1,7 +1,5 @@
 package ru.practicum.event.controller;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -13,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.service.PrivateEventService;
-import ru.practicum.exception.ValidationException;
 import ru.practicum.request.ParticipationRequestDto;
 
 import java.util.List;
@@ -75,27 +72,7 @@ public class PrivateEventController {
     public EventRequestStatusUpdateResult changeRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @RequestBody(required = false) String rawBody) {
-
-        log.error("PATCH RAW BODY: [{}], isNull={}, length={}",
-                rawBody, rawBody == null, rawBody == null ? -1 : rawBody.length());
-
-        if (rawBody == null || rawBody.isBlank()) {
-            throw new ValidationException("Тело запроса обязательно");
-        }
-
-        EventRequestStatusUpdateRequest updateRequest;
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            updateRequest = mapper.readValue(rawBody, EventRequestStatusUpdateRequest.class);
-            log.error("PATCH PARSED OK: {}", updateRequest);
-        } catch (Exception e) {
-            log.error("PATCH PARSE FAILED for body [{}]: class={}, message={}",
-                    rawBody, e.getClass().getName(), e.getMessage(), e);
-            throw new ValidationException("Невалидное тело: " + e.getMessage());
-        }
-
+            @Valid @RequestBody EventRequestStatusUpdateRequest updateRequest) {
         return eventService.changeRequestStatus(userId, eventId, updateRequest);
     }
 }

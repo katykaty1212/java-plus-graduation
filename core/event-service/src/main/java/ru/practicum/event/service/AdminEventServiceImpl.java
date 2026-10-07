@@ -8,9 +8,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.ViewStatsDto;
 import ru.practicum.category.CategoryRepository;
 import ru.practicum.category.model.Category;
 import ru.practicum.client.RequestClient;
+import ru.practicum.client.StatsClient;
 import ru.practicum.client.UserClient;
 import ru.practicum.event.EventMapper;
 import ru.practicum.event.EventRepository;
@@ -24,10 +26,13 @@ import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.request.RequestStatus;
 import ru.practicum.user.UserShortDto;
+import ru.practicum.util.DateUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,6 +45,7 @@ public class AdminEventServiceImpl implements AdminEventService {
     private final CategoryRepository categoryRepository;
     private final RequestClient requestClient;
     private final UserClient userClient;
+    private final StatsClient statsClient;
 
     @Override
     public List<EventFullDto> getEvents(
@@ -53,16 +59,13 @@ public class AdminEventServiceImpl implements AdminEventService {
 
         Pageable pageable = PageRequest.of(from / size, size);
 
-        // Строим запрос вручную через Criteria API
         Specification<Event> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Фильтр по пользователям (initiatorId — Long)
             if (users != null && !users.isEmpty()) {
                 predicates.add(root.get("initiatorId").in(users));
             }
 
-            // Фильтр по статусам
             if (states != null && !states.isEmpty()) {
                 List<EventState> eventStates = states.stream()
                         .map(EventState::valueOf)
@@ -70,17 +73,14 @@ public class AdminEventServiceImpl implements AdminEventService {
                 predicates.add(root.get("state").in(eventStates));
             }
 
-            // Фильтр по категориям
             if (categories != null && !categories.isEmpty()) {
                 predicates.add(root.get("category").get("id").in(categories));
             }
 
-            // Фильтр по дате начала
             if (rangeStart != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("eventDate"), rangeStart));
             }
 
-            // Фильтр по дате конца
             if (rangeEnd != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("eventDate"), rangeEnd));
             }
@@ -92,8 +92,15 @@ public class AdminEventServiceImpl implements AdminEventService {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        return eventRepository.findAll(spec, pageable).stream()
-                .map(this::toEventFullDto)
+        List<Event> events = eventRepository.findAll(spec, pageable).getContent();
+
+        List<Long> ids = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+        Map<Long, Long> views = getViewsForEvents(ids);
+
+        return events.stream()
+                .map(e -> toEventFullDto(e, views.getOrDefault(e.getId(), 0L)))
                 .collect(Collectors.toList());
     }
 
@@ -168,16 +175,44 @@ public class AdminEventServiceImpl implements AdminEventService {
 
         Event updated = eventRepository.save(event);
         log.info("Event updated by admin: {}", updated);
-        return toEventFullDto(updated);
+
+        Map<Long, Long> views = getViewsForEvents(List.of(updated.getId()));
+        return toEventFullDto(updated, views.getOrDefault(updated.getId(), 0L));
     }
 
-    private EventFullDto toEventFullDto(Event event) {
+    private EventFullDto toEventFullDto(Event event, Long views) {
         Long confirmedLong = requestClient.countByEventAndStatus(
                 event.getId(), RequestStatus.CONFIRMED);
         int confirmedRequests = confirmedLong != null ? confirmedLong.intValue() : 0;
         UserShortDto initiator = event.getInitiatorId() != null
                 ? userClient.getUser(event.getInitiatorId())
                 : null;
-        return EventMapper.toEventFullDtoWithStats(event, confirmedRequests, 0L, initiator);
+        return EventMapper.toEventFullDtoWithStats(event, confirmedRequests, views, initiator);
+    }
+
+    private Map<Long, Long> getViewsForEvents(List<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        try {
+            List<String> uris = eventIds.stream()
+                    .map(id -> "/events/" + id)
+                    .collect(Collectors.toList());
+
+            String start = DateUtils.format(LocalDateTime.of(2000, 1, 1, 0, 0, 0));
+            String end = DateUtils.format(LocalDateTime.now());
+
+            List<ViewStatsDto> stats = statsClient.getStats(start, end, uris, true);
+
+            return stats.stream()
+                    .collect(Collectors.toMap(
+                            s -> Long.parseLong(s.getUri().replace("/events/", "")),
+                            ViewStatsDto::getHits,
+                            (existing, replacement) -> existing
+                    ));
+        } catch (Exception e) {
+            log.error("Не удалось получить просмотры для событий: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
     }
 }
