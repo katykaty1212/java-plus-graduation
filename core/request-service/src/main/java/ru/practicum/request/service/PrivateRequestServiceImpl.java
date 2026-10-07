@@ -60,11 +60,11 @@ public class PrivateRequestServiceImpl implements PrivateRequestService {
             throw new ConflictException("Достигнут лимит участников");
         }
 
-        RequestStatus initialStatus = RequestStatus.PENDING;
-        if (Boolean.FALSE.equals(event.getRequestModeration())
-                || event.getParticipantLimit() == null
-                || event.getParticipantLimit() == 0) {
+        RequestStatus initialStatus;
+        if (Boolean.FALSE.equals(event.getRequestModeration())) {
             initialStatus = RequestStatus.CONFIRMED;
+        } else {
+            initialStatus = RequestStatus.PENDING;
         }
 
         ParticipationRequest request = ParticipationRequest.builder()
