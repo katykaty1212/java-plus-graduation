@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.service.PrivateEventService;
-import ru.practicum.exception.ValidationException;
 import ru.practicum.request.ParticipationRequestDto;
 
 import java.util.List;
