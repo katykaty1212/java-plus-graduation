@@ -1,6 +1,3 @@
-server:
-  port: 8080
-
 spring:
   cloud:
     gateway:
@@ -12,16 +9,16 @@ spring:
         - id: stats-server
           uri: lb://stats-server
           predicates:
-            - Path=/stats/**
+            - Path=/stats/**,/stats
         - id: user-service
           uri: lb://user-service
           predicates:
-            - Path=/admin/users/**
+            - Path=/admin/users/**,/admin/users
         - id: request-service
           uri: lb://request-service
           predicates:
-            - Path=/users/*/requests/**
+            - Path=/users/*/requests/**,/users/*/requests
         - id: event-service
           uri: lb://event-service
           predicates:
-            - Path=/events/**,/categories/**,/compilations/**,/admin/events/**,/admin/categories/**,/admin/compilations/**,/users/*/events/**
+            - Path=/events/**,/events,/categories/**,/categories,/compilations/**,/compilations,/admin/events/**,/admin/events,/admin/categories/**,/admin/categories,/admin/compilations/**,/admin/compilations,/users/*/events/**,/users/*/events
