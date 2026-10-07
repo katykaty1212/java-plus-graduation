@@ -21,7 +21,7 @@ public interface RequestClient {
     List<ParticipationRequestDto> findAllByEventIdAndIdIn(@RequestParam Long eventId,
                                                           @RequestParam List<Long> ids);
 
-    @PatchMapping("/internal/requests/{id}/status")
+    @PostMapping("/internal/requests/{id}/status")
     ParticipationRequestDto updateStatus(@PathVariable Long id,
                                          @RequestParam RequestStatus status);
 }

@@ -40,7 +40,7 @@ public class InternalRequestController {
                 .collect(Collectors.toList());
     }
 
-    @PatchMapping("/{id}/status")
+    @PostMapping("/{id}/status")
     public ParticipationRequestDto updateStatus(@PathVariable Long id,
                                                 @RequestParam RequestStatus status) {
         ParticipationRequest request = requestRepository.findById(id)
