@@ -53,6 +53,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     @Override
     @Transactional
     public EventFullDto addEvent(Long userId, NewEventDto newEventDto) {
+        // Проверяем, что пользователь существует (через клиент)
         if (!userClient.existsById(userId)) {
             throw new NotFoundException("User with id=" + userId + " was not found");
         }
@@ -160,24 +161,13 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Event event = eventRepository.findByIdAndInitiatorId(eventId, userId)
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
 
-        if (updateRequest.getRequestIds() == null || updateRequest.getRequestIds().isEmpty()) {
-            throw new ValidationException("requestIds must not be empty");
-        }
-        if (updateRequest.getStatus() == null) {
-            throw new ValidationException("status must not be null");
-        }
-
         long confirmedCount = requestClient.countByEventAndStatus(eventId, RequestStatus.CONFIRMED);
 
-        if (updateRequest.getStatus() == RequestStatus.CONFIRMED
-                && event.getParticipantLimit() != null
-                && event.getParticipantLimit() > 0
-                && confirmedCount >= event.getParticipantLimit()) {
+        if (event.getParticipantLimit() > 0 && confirmedCount >= event.getParticipantLimit()) {
             throw new ConflictException("The participant limit has been reached");
         }
 
-        List<ParticipationRequestDto> requests =
-                requestClient.findAllByEventIdAndIdIn(eventId, updateRequest.getRequestIds());
+        List<ParticipationRequestDto> requests = requestClient.findAllByEventIdAndIdIn(eventId, updateRequest.getRequestIds());
 
         List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
         List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
@@ -188,21 +178,16 @@ public class PrivateEventServiceImpl implements PrivateEventService {
             }
 
             if (updateRequest.getStatus() == RequestStatus.CONFIRMED) {
-                if (event.getParticipantLimit() == null
-                        || event.getParticipantLimit() == 0
-                        || confirmedCount < event.getParticipantLimit()) {
-                    ParticipationRequestDto updated =
-                            requestClient.updateStatus(request.getId(), RequestStatus.CONFIRMED);
+                if (event.getParticipantLimit() == 0 || confirmedCount < event.getParticipantLimit()) {
+                    ParticipationRequestDto updated = requestClient.updateStatus(request.getId(), RequestStatus.CONFIRMED);
                     confirmedRequests.add(updated);
                     confirmedCount++;
                 } else {
-                    ParticipationRequestDto updated =
-                            requestClient.updateStatus(request.getId(), RequestStatus.REJECTED);
+                    ParticipationRequestDto updated = requestClient.updateStatus(request.getId(), RequestStatus.REJECTED);
                     rejectedRequests.add(updated);
                 }
             } else {
-                ParticipationRequestDto updated =
-                        requestClient.updateStatus(request.getId(), RequestStatus.REJECTED);
+                ParticipationRequestDto updated = requestClient.updateStatus(request.getId(), RequestStatus.REJECTED);
                 rejectedRequests.add(updated);
             }
         }
