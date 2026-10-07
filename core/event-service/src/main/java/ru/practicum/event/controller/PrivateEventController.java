@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.service.PrivateEventService;
+import ru.practicum.exception.ConflictException;
 import ru.practicum.request.ParticipationRequestDto;
 
 import java.util.List;
@@ -72,7 +73,13 @@ public class PrivateEventController {
     public EventRequestStatusUpdateResult changeRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @Valid @RequestBody EventRequestStatusUpdateRequest updateRequest) {
+            @RequestBody(required = false) EventRequestStatusUpdateRequest updateRequest) {
+
+        if (updateRequest == null
+                || updateRequest.getRequestIds() == null
+                || updateRequest.getRequestIds().isEmpty()) {
+            throw new ConflictException("Request body is missing");
+        }
         return eventService.changeRequestStatus(userId, eventId, updateRequest);
     }
 }
