@@ -1,5 +1,7 @@
 package ru.practicum.event.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.service.PrivateEventService;
+import ru.practicum.exception.ValidationException;
 import ru.practicum.request.ParticipationRequestDto;
 
 import java.util.List;
@@ -70,7 +73,20 @@ public class PrivateEventController {
     public EventRequestStatusUpdateResult changeRequestStatus(
             @PathVariable Long userId,
             @PathVariable Long eventId,
-            @Valid @RequestBody EventRequestStatusUpdateRequest updateRequest) {
+            @RequestBody(required = false) String rawBody) throws JsonProcessingException {
+
+        if (rawBody == null || rawBody.isBlank()) {
+            throw new ValidationException("Тело запроса обязательно");
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        EventRequestStatusUpdateRequest updateRequest;
+        try {
+            updateRequest = mapper.readValue(rawBody, EventRequestStatusUpdateRequest.class);
+        } catch (Exception e) {
+            throw new ValidationException("Невалидное тело запроса: " + e.getMessage());
+        }
+
         return eventService.changeRequestStatus(userId, eventId, updateRequest);
     }
 }
