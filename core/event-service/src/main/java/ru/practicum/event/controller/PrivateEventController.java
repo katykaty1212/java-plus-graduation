@@ -1,5 +1,6 @@
 package ru.practicum.event.controller;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -76,7 +77,8 @@ public class PrivateEventController {
             @PathVariable Long eventId,
             @RequestBody(required = false) String rawBody) {
 
-        log.error("PATCH RAW BODY: [{}], isNull={}", rawBody, rawBody == null);
+        log.error("PATCH RAW BODY: [{}], isNull={}, length={}",
+                rawBody, rawBody == null, rawBody == null ? -1 : rawBody.length());
 
         if (rawBody == null || rawBody.isBlank()) {
             throw new ValidationException("Тело запроса обязательно");
@@ -84,7 +86,9 @@ public class PrivateEventController {
 
         EventRequestStatusUpdateRequest updateRequest;
         try {
-            updateRequest = new ObjectMapper().readValue(rawBody, EventRequestStatusUpdateRequest.class);
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            updateRequest = mapper.readValue(rawBody, EventRequestStatusUpdateRequest.class);
             log.error("PATCH PARSED OK: {}", updateRequest);
         } catch (Exception e) {
             log.error("PATCH PARSE FAILED for body [{}]: class={}, message={}",
