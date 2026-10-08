@@ -22,3 +22,7 @@ spring:
           uri: lb://event-service
           predicates:
             - Path=/events/**,/events,/categories/**,/categories,/compilations/**,/compilations,/admin/events/**,/admin/events,/admin/categories/**,/admin/categories,/admin/compilations/**,/admin/compilations,/users/*/events/**,/users/*/events
+        - id: additional-service
+          uri: lb://additional-service
+          predicates:
+            - Path=/users/*/subscriptions/**,/users/*/subscriptions
