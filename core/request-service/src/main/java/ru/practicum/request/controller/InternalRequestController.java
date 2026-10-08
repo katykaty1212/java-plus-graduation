@@ -10,6 +10,7 @@ import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.repository.ParticipationRequestRepository;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -47,5 +48,26 @@ public class InternalRequestController {
                 .orElseThrow(() -> new NotFoundException("Заявка с id=" + id + " не найдена"));
         request.setStatus(status);
         return RequestMapper.toParticipationRequestDto(requestRepository.save(request));
+    }
+
+    @GetMapping("/count-by-event-ids")
+    public Map<Long, Long> countByEventIdsAndStatus(@RequestParam List<Long> eventIds,
+                                                    @RequestParam RequestStatus status) {
+        return requestRepository.countByEventIdsAndStatus(eventIds, status).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+    }
+
+    @PostMapping("/update-status-batch")
+    public List<ParticipationRequestDto> updateStatusBatch(@RequestParam List<Long> ids,
+                                                           @RequestParam RequestStatus status) {
+        List<ParticipationRequest> requests = requestRepository.findAllById(ids);
+        requests.forEach(r -> r.setStatus(status));
+        requestRepository.saveAll(requests);
+        return requests.stream()
+                .map(RequestMapper::toParticipationRequestDto)
+                .collect(Collectors.toList());
     }
 }

@@ -5,12 +5,8 @@ import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.EndpointHitDto;
 import ru.practicum.ViewStatsDto;
 import ru.practicum.client.RequestClient;
 import ru.practicum.client.StatsClient;
@@ -18,9 +14,9 @@ import ru.practicum.client.UserClient;
 import ru.practicum.event.EventMapper;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.EventShortDto;
+import ru.practicum.event.dto.PublicEventSearchParams;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PublicEventService;
-import ru.practicum.exception.ValidationException;
 import ru.practicum.request.RequestStatus;
 import ru.practicum.user.UserShortDto;
 import ru.practicum.util.DateUtils;
@@ -52,39 +48,24 @@ public class PublicEventController {
             @RequestParam(defaultValue = "10") @Positive int size,
             HttpServletRequest request) {
 
-        // ВАЛИДАЦИЯ ДАТ
-        if (rangeStart != null && rangeEnd != null && rangeEnd.isBefore(rangeStart)) {
-            throw new ValidationException("rangeEnd must be after rangeStart");
-        }
-
         log.info("Запрос на получение событий с фильтрами: text={}, categories={}, paid={}, sort={}",
                 text, categories, paid, sort);
 
-        // Отправляем статистику
-        try {
-            statsClient.saveHit(EndpointHitDto.builder()
-                    .app("ewm-main-service")
-                    .uri("/events")
-                    .ip(request.getRemoteAddr())
-                    .timestamp(LocalDateTime.now())
-                    .build());
-            log.info("Статистика для /events сохранена");
-        } catch (Exception e) {
-            log.error("Ошибка при сохранении статистики для /events: {}", e.getMessage());
-        }
+        eventService.saveHit("/events", request.getRemoteAddr());
 
-        // Сортировка
-        Sort sortBy = Sort.unsorted();
-        if ("EVENT_DATE".equals(sort)) {
-            sortBy = Sort.by("eventDate").ascending();
-        }
+        PublicEventSearchParams params = PublicEventSearchParams.builder()
+                .text(text)
+                .categories(categories)
+                .paid(paid)
+                .rangeStart(rangeStart)
+                .rangeEnd(rangeEnd)
+                .onlyAvailable(onlyAvailable)
+                .sort(sort)
+                .from(from)
+                .size(size)
+                .build();
 
-        Pageable pageable = PageRequest.of(from / size, size, sortBy);
-
-        LocalDateTime start = rangeStart != null ? rangeStart : LocalDateTime.now();
-        LocalDateTime end = rangeEnd != null ? rangeEnd : LocalDateTime.now().plusYears(100);
-
-        return eventService.getPublishedEvents(text, categories, paid, start, end, pageable, sort);
+        return eventService.getPublishedEvents(params);
     }
 
     @GetMapping("/{id}")
@@ -92,20 +73,9 @@ public class PublicEventController {
             @PathVariable Long id,
             HttpServletRequest request) {
 
-        // Отправляем статистику
         log.info("Запрос на получение события с id={}", id);
 
-        try {
-            statsClient.saveHit(EndpointHitDto.builder()
-                    .app("ewm-main-service")
-                    .uri("/events/" + id)
-                    .ip(request.getRemoteAddr())
-                    .timestamp(LocalDateTime.now())
-                    .build());
-            log.info("Статистика для /events/{} сохранена", id);
-        } catch (Exception e) {
-            log.error("Ошибка при сохранении статистики для /events/{}: {}", id, e.getMessage());
-        }
+        eventService.saveHit("/events/" + id, request.getRemoteAddr());
 
         Event event = eventService.getPublishedEventById(id);
 

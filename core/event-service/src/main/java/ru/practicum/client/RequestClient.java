@@ -6,6 +6,7 @@ import ru.practicum.request.ParticipationRequestDto;
 import ru.practicum.request.RequestStatus;
 
 import java.util.List;
+import java.util.Map;
 
 @FeignClient(name = "request-service")
 public interface RequestClient {
@@ -24,4 +25,12 @@ public interface RequestClient {
     @PostMapping("/internal/requests/{id}/status")
     ParticipationRequestDto updateStatus(@PathVariable Long id,
                                          @RequestParam RequestStatus status);
+
+    @GetMapping("/internal/requests/count-by-event-ids")
+    Map<Long, Long> countByEventIdsAndStatus(@RequestParam List<Long> eventIds,
+                                             @RequestParam RequestStatus status);
+
+    @PostMapping("/internal/requests/update-status-batch")
+    List<ParticipationRequestDto> updateStatusBatch(@RequestParam List<Long> ids,
+                                                    @RequestParam RequestStatus status);
 }

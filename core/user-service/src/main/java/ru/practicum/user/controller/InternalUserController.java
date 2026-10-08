@@ -8,6 +8,9 @@ import ru.practicum.user.repository.UserRepository;
 import ru.practicum.user.UserShortDto;
 import ru.practicum.user.model.User;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/internal/users")
 @RequiredArgsConstructor
@@ -25,5 +28,12 @@ public class InternalUserController {
     @GetMapping("/{id}/exists")
     public Boolean exists(@PathVariable Long id) {
         return userRepository.existsById(id);
+    }
+
+    @GetMapping("/by-ids")
+    public List<UserShortDto> getUsers(@RequestParam List<Long> ids) {
+        return userRepository.findAllById(ids).stream()
+                .map(UserMapper::toUserShortDto)
+                .collect(Collectors.toList());
     }
 }

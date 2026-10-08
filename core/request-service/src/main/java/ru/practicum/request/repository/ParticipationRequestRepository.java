@@ -1,6 +1,8 @@
 package ru.practicum.request.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.RequestStatus;
@@ -29,4 +31,10 @@ public interface ParticipationRequestRepository extends JpaRepository<Participat
     // 5. Получить список заявок по их ID и ID события (для массового обновления статусов)
     // Используется в: PATCH /users/{userId}/events/{eventId}/requests
     List<ParticipationRequest> findAllByEventIdAndIdIn(Long eventId, List<Long> ids);
+
+    @Query("SELECT r.eventId, COUNT(r) FROM ParticipationRequest r " +
+            "WHERE r.eventId IN :eventIds AND r.status = :status " +
+            "GROUP BY r.eventId")
+    List<Object[]> countByEventIdsAndStatus(@Param("eventIds") List<Long> eventIds,
+                                            @Param("status") RequestStatus status);
 }

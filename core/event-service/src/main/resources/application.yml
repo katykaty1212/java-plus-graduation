@@ -22,3 +22,6 @@ eureka:
 feign:
   httpclient:
     enabled: true
+
+stats:
+  app-name: ewm-main-service

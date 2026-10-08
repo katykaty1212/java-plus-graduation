@@ -169,8 +169,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         List<ParticipationRequestDto> requests = requestClient.findAllByEventIdAndIdIn(eventId, updateRequest.getRequestIds());
 
-        List<ParticipationRequestDto> confirmedRequests = new ArrayList<>();
-        List<ParticipationRequestDto> rejectedRequests = new ArrayList<>();
+        List<Long> toConfirmIds = new ArrayList<>();
+        List<Long> toRejectIds = new ArrayList<>();
 
         for (ParticipationRequestDto request : requests) {
             if (request.getStatus() != RequestStatus.PENDING) {
@@ -179,18 +179,23 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
             if (updateRequest.getStatus() == RequestStatus.CONFIRMED) {
                 if (event.getParticipantLimit() == 0 || confirmedCount < event.getParticipantLimit()) {
-                    ParticipationRequestDto updated = requestClient.updateStatus(request.getId(), RequestStatus.CONFIRMED);
-                    confirmedRequests.add(updated);
+                    toConfirmIds.add(request.getId());
                     confirmedCount++;
                 } else {
-                    ParticipationRequestDto updated = requestClient.updateStatus(request.getId(), RequestStatus.REJECTED);
-                    rejectedRequests.add(updated);
+                    toRejectIds.add(request.getId());
                 }
             } else {
-                ParticipationRequestDto updated = requestClient.updateStatus(request.getId(), RequestStatus.REJECTED);
-                rejectedRequests.add(updated);
+                toRejectIds.add(request.getId());
             }
         }
+
+        List<ParticipationRequestDto> confirmedRequests = toConfirmIds.isEmpty()
+                ? new ArrayList<>()
+                : requestClient.updateStatusBatch(toConfirmIds, RequestStatus.CONFIRMED);
+
+        List<ParticipationRequestDto> rejectedRequests = toRejectIds.isEmpty()
+                ? new ArrayList<>()
+                : requestClient.updateStatusBatch(toRejectIds, RequestStatus.REJECTED);
 
         return EventRequestStatusUpdateResult.builder()
                 .confirmedRequests(confirmedRequests)
