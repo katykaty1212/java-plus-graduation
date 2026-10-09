@@ -1,6 +1,7 @@
 package ru.practicum.client;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.client.ServiceInstance;
 import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
@@ -19,7 +20,8 @@ import java.util.List;
 @Component
 public class StatsClientImpl implements StatsClient {
 
-    private static final String STATS_SERVICE_ID = "stats-server";
+    @Value("${stats.service-id}")
+    private String statsServiceId;
 
     private final DiscoveryClient discoveryClient;
     private final RestTemplate restTemplate;
@@ -41,10 +43,10 @@ public class StatsClientImpl implements StatsClient {
     }
 
     private ServiceInstance getInstance() {
-        List<ServiceInstance> instances = discoveryClient.getInstances(STATS_SERVICE_ID);
+        List<ServiceInstance> instances = discoveryClient.getInstances(statsServiceId);
         if (instances.isEmpty()) {
             throw new StatsServerUnavailable(
-                    "Сервис статистики не найден в Eureka: " + STATS_SERVICE_ID,
+                    "Сервис статистики не найден в Eureka: " + statsServiceId,
                     null
             );
         }
