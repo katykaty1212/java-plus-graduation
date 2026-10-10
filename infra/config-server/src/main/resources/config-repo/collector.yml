@@ -3,14 +3,19 @@ server:
 
 grpc:
   server:
-    port: 0
+    port: 9095
+
+eureka:
+  instance:
+    non-secure-port: 9095
+    non-secure-port-enabled: true
 
 spring:
   kafka:
     bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.SpecificAvroSerializer
+      value-serializer: ru.practicum.ewm.stats.avro.AvroSerializer
 
 kafka:
   topics:

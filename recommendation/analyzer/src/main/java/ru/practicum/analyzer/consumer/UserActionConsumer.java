@@ -21,7 +21,11 @@ public class UserActionConsumer {
 
     private final UserInteractionRepository userInteractionRepository;
 
-    @KafkaListener(topics = "${kafka.topics.user-actions}", groupId = "analyzer")
+    @KafkaListener(
+            topics = "${kafka.topics.user-actions}",
+            groupId = "analyzer",
+            containerFactory = "userActionKafkaListenerContainerFactory"
+    )
     @Transactional
     public void consume(UserActionAvro action) {
         double newWeight = toWeight(action.getActionType());

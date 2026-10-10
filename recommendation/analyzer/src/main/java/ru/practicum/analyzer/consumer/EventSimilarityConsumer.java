@@ -20,7 +20,11 @@ public class EventSimilarityConsumer {
 
     private final EventSimilarityRepository eventSimilarityRepository;
 
-    @KafkaListener(topics = "${kafka.topics.events-similarity}", groupId = "analyzer")
+    @KafkaListener(
+            topics = "${kafka.topics.events-similarity}",
+            groupId = "analyzer",
+            containerFactory = "eventSimilarityKafkaListenerContainerFactory"
+    )
     @Transactional
     public void consume(EventSimilarityAvro msg) {
         eventSimilarityRepository.findByEventAAndEventB(msg.getEventA(), msg.getEventB())

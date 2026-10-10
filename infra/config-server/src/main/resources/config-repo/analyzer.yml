@@ -3,7 +3,12 @@ server:
 
 grpc:
   server:
-    port: 0
+    port: 9096
+
+eureka:
+  instance:
+    non-secure-port: 9096
+    non-secure-port-enabled: true
 
 spring:
   datasource:
@@ -29,7 +34,6 @@ spring:
       group-id: analyzer
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.SpecificAvroDeserializer
 
 kafka:
   topics:
