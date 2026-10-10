@@ -33,4 +33,10 @@ public interface RequestClient {
     @PostMapping("/internal/requests/update-status-batch")
     List<ParticipationRequestDto> updateStatusBatch(@RequestParam List<Long> ids,
                                                     @RequestParam RequestStatus status);
+
+    @GetMapping("/internal/requests/exists")
+    Boolean existsByRequesterIdAndEventIdAndStatus(
+            @RequestParam Long userId,
+            @RequestParam Long eventId,
+            @RequestParam RequestStatus status);
 }

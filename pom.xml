@@ -21,6 +21,7 @@
 		<module>infra</module>
 		<module>core</module>
 		<module>stats</module>
+        <module>recommendation</module>
 	</modules>
 
 	<properties>

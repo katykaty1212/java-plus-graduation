@@ -1,0 +1,31 @@
+{
+  "type": "record",
+  "name": "EventSimilarityAvro",
+  "namespace": "ru.practicum.ewm.stats.avro",
+  "doc": "Коэффициент сходства двух мероприятий",
+  "fields": [
+    {
+      "name": "eventA",
+      "type": "long",
+      "doc": "Идентификатор мероприятия A (меньший)"
+    },
+    {
+      "name": "eventB",
+      "type": "long",
+      "doc": "Идентификатор мероприятия B (больший)"
+    },
+    {
+      "name": "score",
+      "type": "double",
+      "doc": "Коэффициент сходства"
+    },
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      },
+      "doc": "Метка времени, когда было совершено действие"
+    }
+  ]
+}

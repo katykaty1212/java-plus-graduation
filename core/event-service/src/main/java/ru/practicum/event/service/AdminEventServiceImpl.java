@@ -8,11 +8,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.ViewStatsDto;
 import ru.practicum.category.CategoryRepository;
 import ru.practicum.category.model.Category;
+import ru.practicum.client.AnalyzerClient;
 import ru.practicum.client.RequestClient;
-import ru.practicum.client.StatsClient;
 import ru.practicum.client.UserClient;
 import ru.practicum.event.EventMapper;
 import ru.practicum.event.EventRepository;
@@ -26,11 +25,11 @@ import ru.practicum.exception.NotFoundException;
 import ru.practicum.exception.ValidationException;
 import ru.practicum.request.RequestStatus;
 import ru.practicum.user.UserShortDto;
-import ru.practicum.util.DateUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,7 +44,7 @@ public class AdminEventServiceImpl implements AdminEventService {
     private final CategoryRepository categoryRepository;
     private final RequestClient requestClient;
     private final UserClient userClient;
-    private final StatsClient statsClient;
+    private final AnalyzerClient analyzerClient;
 
     @Override
     public List<EventFullDto> getEvents(
@@ -97,10 +96,10 @@ public class AdminEventServiceImpl implements AdminEventService {
         List<Long> ids = events.stream()
                 .map(Event::getId)
                 .collect(Collectors.toList());
-        Map<Long, Long> views = getViewsForEvents(ids);
+        Map<Long, Double> ratings = fetchRatings(ids);
 
         return events.stream()
-                .map(e -> toEventFullDto(e, views.getOrDefault(e.getId(), 0L)))
+                .map(e -> toEventFullDto(e, ratings.getOrDefault(e.getId(), 0.0)))
                 .collect(Collectors.toList());
     }
 
@@ -176,43 +175,32 @@ public class AdminEventServiceImpl implements AdminEventService {
         Event updated = eventRepository.save(event);
         log.info("Event updated by admin: {}", updated);
 
-        Map<Long, Long> views = getViewsForEvents(List.of(updated.getId()));
-        return toEventFullDto(updated, views.getOrDefault(updated.getId(), 0L));
+        Map<Long, Double> ratings = fetchRatings(List.of(updated.getId()));
+        return toEventFullDto(updated, ratings.getOrDefault(updated.getId(), 0.0));
     }
 
-    private EventFullDto toEventFullDto(Event event, Long views) {
+    private EventFullDto toEventFullDto(Event event, Double rating) {
         Long confirmedLong = requestClient.countByEventAndStatus(
                 event.getId(), RequestStatus.CONFIRMED);
         int confirmedRequests = confirmedLong != null ? confirmedLong.intValue() : 0;
         UserShortDto initiator = event.getInitiatorId() != null
                 ? userClient.getUser(event.getInitiatorId())
                 : null;
-        return EventMapper.toEventFullDtoWithStats(event, confirmedRequests, views, initiator);
+        return EventMapper.toEventFullDtoWithStats(event, confirmedRequests, rating, initiator);
     }
 
-    private Map<Long, Long> getViewsForEvents(List<Long> eventIds) {
+    private Map<Long, Double> fetchRatings(List<Long> eventIds) {
         if (eventIds == null || eventIds.isEmpty()) {
             return Collections.emptyMap();
         }
+        Map<Long, Double> result = new HashMap<>();
         try {
-            List<String> uris = eventIds.stream()
-                    .map(id -> "/events/" + id)
-                    .collect(Collectors.toList());
-
-            String start = DateUtils.format(LocalDateTime.of(2000, 1, 1, 0, 0, 0));
-            String end = DateUtils.format(LocalDateTime.now());
-
-            List<ViewStatsDto> stats = statsClient.getStats(start, end, uris, true);
-
-            return stats.stream()
-                    .collect(Collectors.toMap(
-                            s -> Long.parseLong(s.getUri().replace("/events/", "")),
-                            ViewStatsDto::getHits,
-                            (existing, replacement) -> existing
-                    ));
+            analyzerClient.getInteractionsCount(eventIds).forEach(
+                    proto -> result.put(proto.getEventId(), proto.getScore())
+            );
         } catch (Exception e) {
-            log.error("Не удалось получить просмотры для событий: {}", e.getMessage());
-            return Collections.emptyMap();
+            log.error("Не удалось получить рейтинги: {}", e.getMessage());
         }
+        return result;
     }
 }

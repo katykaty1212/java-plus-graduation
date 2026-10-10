@@ -1,8 +1,10 @@
 package ru.practicum.request.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.client.CollectorClient;
 import ru.practicum.event.EventInternalDto;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
@@ -13,6 +15,7 @@ import ru.practicum.request.client.UserClient;
 import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.repository.ParticipationRequestRepository;
+import ru.practicum.stats.proto.collector.ActionTypeProto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,11 +24,13 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class PrivateRequestServiceImpl implements PrivateRequestService {
 
     private final ParticipationRequestRepository requestRepository;
     private final EventClient eventClient;
     private final UserClient userClient;
+    private final CollectorClient collectorClient;
 
     @Override
     public List<ParticipationRequestDto> getUserRequests(Long userId) {
@@ -74,7 +79,11 @@ public class PrivateRequestServiceImpl implements PrivateRequestService {
                 .createdDate(LocalDateTime.now())
                 .build();
 
-        return RequestMapper.toParticipationRequestDto(requestRepository.save(request));
+        ParticipationRequest saved = requestRepository.save(request);
+
+        collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_REGISTER);
+
+        return RequestMapper.toParticipationRequestDto(saved);
     }
 
     @Override
