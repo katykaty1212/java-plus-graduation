@@ -1,13 +1,10 @@
-package ru.practicum.service;
+package ru.practicum;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.EndpointHitDto;
-import ru.practicum.ViewStatsDto;
-import ru.practicum.ValidationException;
-import ru.practicum.model.EndpointHit;
-import ru.practicum.repository.StatsRepository;
+import ru.practicum.analyzer.model.EndpointHit;
+import ru.practicum.analyzer.repository.StatsRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;

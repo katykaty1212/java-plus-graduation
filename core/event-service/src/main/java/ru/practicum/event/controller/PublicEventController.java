@@ -1,25 +1,15 @@
 package ru.practicum.event.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.ViewStatsDto;
-import ru.practicum.client.RequestClient;
-import ru.practicum.client.StatsClient;
-import ru.practicum.client.UserClient;
-import ru.practicum.event.EventMapper;
 import ru.practicum.event.dto.EventFullDto;
 import ru.practicum.event.dto.EventShortDto;
 import ru.practicum.event.dto.PublicEventSearchParams;
-import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PublicEventService;
-import ru.practicum.request.RequestStatus;
-import ru.practicum.user.UserShortDto;
-import ru.practicum.util.DateUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -31,9 +21,6 @@ import java.util.List;
 public class PublicEventController {
 
     private final PublicEventService eventService;
-    private final StatsClient statsClient;
-    private final RequestClient requestClient;
-    private final UserClient userClient;
 
     @GetMapping
     public List<EventShortDto> getEvents(
@@ -45,13 +32,10 @@ public class PublicEventController {
             @RequestParam(defaultValue = "false") Boolean onlyAvailable,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") @PositiveOrZero int from,
-            @RequestParam(defaultValue = "10") @Positive int size,
-            HttpServletRequest request) {
+            @RequestParam(defaultValue = "10") @Positive int size) {
 
         log.info("Запрос на получение событий с фильтрами: text={}, categories={}, paid={}, sort={}",
                 text, categories, paid, sort);
-
-        eventService.saveHit("/events", request.getRemoteAddr());
 
         PublicEventSearchParams params = PublicEventSearchParams.builder()
                 .text(text)
@@ -71,33 +55,27 @@ public class PublicEventController {
     @GetMapping("/{id}")
     public EventFullDto getEvent(
             @PathVariable Long id,
-            HttpServletRequest request) {
+            @RequestHeader(value = "X-EWM-USER-ID", required = false) Long userId) {
 
-        log.info("Запрос на получение события с id={}", id);
+        log.info("Запрос на получение события с id={}, userId={}", id, userId);
+        return eventService.getPublishedEventById(id, userId);
+    }
 
-        eventService.saveHit("/events/" + id, request.getRemoteAddr());
+    @GetMapping("/recommendations")
+    public List<EventShortDto> getRecommendations(
+            @RequestHeader("X-EWM-USER-ID") Long userId,
+            @RequestParam(defaultValue = "10") @Positive int maxResults) {
 
-        Event event = eventService.getPublishedEventById(id);
+        log.info("Запрос рекомендаций для userId={}, maxResults={}", userId, maxResults);
+        return eventService.getRecommendations(userId, maxResults);
+    }
 
-        Long confirmedLong = requestClient.countByEventAndStatus(id, RequestStatus.CONFIRMED);
-        int confirmedRequests = confirmedLong != null ? confirmedLong.intValue() : 0;
-        log.info("Количество подтвержденных заявок: {}", confirmedRequests);
+    @PutMapping("/{eventId}/like")
+    public void likeEvent(
+            @PathVariable Long eventId,
+            @RequestHeader("X-EWM-USER-ID") Long userId) {
 
-        Long views = 0L;
-        try {
-            String start = DateUtils.format(LocalDateTime.of(2000, 1, 1, 0, 0, 0));
-            String end = DateUtils.format(LocalDateTime.now());
-            List<ViewStatsDto> stats = statsClient.getStats(start, end, List.of("/events/" + id), true);
-            views = stats.isEmpty() ? 0L : stats.get(0).getHits();
-            log.info("Количество просмотров: {}", views);
-        } catch (Exception e) {
-            log.error("Ошибка при получении просмотров: {}", e.getMessage());
-        }
-
-        UserShortDto initiator = event.getInitiatorId() != null
-                ? userClient.getUser(event.getInitiatorId())
-                : null;
-
-        return EventMapper.toEventFullDtoWithStats(event, confirmedRequests, views, initiator);
+        log.info("Лайк мероприятия eventId={} от userId={}", eventId, userId);
+        eventService.likeEvent(eventId, userId);
     }
 }
