@@ -23,7 +23,8 @@ public class UserActionServiceImpl implements UserActionService {
     @Override
     public void collectUserAction(UserActionProto action) {
         UserActionAvro avro = mapper.toAvro(action);
-        kafkaTemplate.send(userActionsTopic, avro);
+        String key = String.valueOf(avro.getEventId());
+        kafkaTemplate.send(userActionsTopic, key, avro);
         log.info("Отправлено действие: userId={}, eventId={}, actionType={}",
                 avro.getUserId(), avro.getEventId(), avro.getActionType());
     }

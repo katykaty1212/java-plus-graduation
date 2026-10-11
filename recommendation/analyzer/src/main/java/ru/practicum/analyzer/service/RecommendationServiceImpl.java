@@ -71,52 +71,85 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .map(Map.Entry::getKey)
                 .toList();
 
-        // 4. Для каждого кандидата — предсказанная оценка
+        // 4. Для всех кандидатов — предсказанная оценка (batch, без N+1)
+        Map<Long, Double> predictedScores = predictScoresBatch(userId, topCandidates);
+
         return topCandidates.stream()
-                .map(eventId -> {
-                    double predicted = predictScore(userId, eventId);
-                    return RecommendedEventProto.newBuilder()
-                            .setEventId(eventId)
-                            .setScore(predicted)
-                            .build();
-                });
+                .map(eventId -> RecommendedEventProto.newBuilder()
+                        .setEventId(eventId)
+                        .setScore(predictedScores.getOrDefault(eventId, 0.0))
+                        .build());
     }
 
     /**
-     * Предсказать оценку пользователя для мероприятия.
-     * Берём K ближайших соседей (мероприятий пользователя) и считаем взвешенную оценку.
+     * Batch-предсказание оценок для всех кандидатов.
+     * Один запрос к БД за всеми соседями и один — за весами пользователя.
      */
-    private double predictScore(long userId, long eventId) {
-        // Похожие на eventId — все пары
-        List<EventSimilarity> neighbours = eventSimilarityRepository.findAllByEventId(
-                eventId, PageRequest.of(0, NEIGHBOURS_K));
-
-        if (neighbours.isEmpty()) return 0.0;
-
-        // Веса пользователя для этих соседей
-        Set<Long> neighbourEventIds = new HashSet<>();
-        Map<Long, Double> simByEvent = new HashMap<>();
-        for (EventSimilarity es : neighbours) {
-            long neighbourId = (es.getEventA() == eventId) ? es.getEventB() : es.getEventA();
-            neighbourEventIds.add(neighbourId);
-            simByEvent.merge(neighbourId, es.getScore(), Math::max);
+    private Map<Long, Double> predictScoresBatch(long userId, List<Long> candidateEventIds) {
+        if (candidateEventIds.isEmpty()) {
+            return Map.of();
         }
 
-        List<UserInteraction> interactions = userInteractionRepository
-                .findByUserIdAndEventIdIn(userId, neighbourEventIds.stream().toList());
+        // 1. Для всех кандидатов — их соседи (batch)
+        List<EventSimilarity> allNeighbours = eventSimilarityRepository.findAllByEventIdsIn(candidateEventIds);
 
-        if (interactions.isEmpty()) return 0.0;
+        // candidate -> (neighbour -> score)
+        Map<Long, Map<Long, Double>> neighboursByCandidate = new HashMap<>();
+        Set<Long> allNeighbourIds = new HashSet<>();
 
-        double numerator = 0.0;
-        double denominator = 0.0;
-        for (UserInteraction ui : interactions) {
-            Double sim = simByEvent.get(ui.getEventId());
-            if (sim == null) continue;
-            numerator += sim * ui.getWeight();
-            denominator += sim;
+        for (EventSimilarity es : allNeighbours) {
+            long a = es.getEventA();
+            long b = es.getEventB();
+            if (candidateEventIds.contains(a)) {
+                neighboursByCandidate.computeIfAbsent(a, k -> new HashMap<>()).merge(b, es.getScore(), Math::max);
+                allNeighbourIds.add(b);
+            }
+            if (candidateEventIds.contains(b)) {
+                neighboursByCandidate.computeIfAbsent(b, k -> new HashMap<>()).merge(a, es.getScore(), Math::max);
+                allNeighbourIds.add(a);
+            }
         }
-        if (denominator == 0.0) return 0.0;
-        return numerator / denominator;
+
+        // 2. Один запрос — веса пользователя для всех соседей
+        Map<Long, Double> userWeights = new HashMap<>();
+        if (!allNeighbourIds.isEmpty()) {
+            List<UserInteraction> interactions = userInteractionRepository
+                    .findAllByUserIdAndEventIdIn(userId, allNeighbourIds.stream().toList());
+            for (UserInteraction ui : interactions) {
+                userWeights.put(ui.getEventId(), ui.getWeight());
+            }
+        }
+
+        // 3. Считаем предсказание для каждого кандидата в памяти
+        Map<Long, Double> result = new HashMap<>();
+        for (Long candidate : candidateEventIds) {
+            Map<Long, Double> neighbours = neighboursByCandidate.getOrDefault(candidate, Map.of());
+
+            // Отбираем K ближайших соседей, с которыми пользователь взаимодействовал
+            List<Map.Entry<Long, Double>> topNeighbours = neighbours.entrySet().stream()
+                    .filter(e -> userWeights.containsKey(e.getKey()))
+                    .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                    .limit(NEIGHBOURS_K)
+                    .toList();
+
+            if (topNeighbours.isEmpty()) {
+                result.put(candidate, 0.0);
+                continue;
+            }
+
+            double numerator = 0.0;
+            double denominator = 0.0;
+            for (Map.Entry<Long, Double> n : topNeighbours) {
+                double sim = n.getValue();
+                double weight = userWeights.get(n.getKey());
+                numerator += sim * weight;
+                denominator += sim;
+            }
+
+            result.put(candidate, denominator == 0.0 ? 0.0 : numerator / denominator);
+        }
+
+        return result;
     }
 
     @Override
@@ -125,9 +158,14 @@ public class RecommendationServiceImpl implements RecommendationService {
         List<EventSimilarity> similarities = eventSimilarityRepository.findAllByEventId(eventId, PageRequest.of(0, 100));
         if (similarities.isEmpty()) return Stream.empty();
 
-        Set<Long> userEvents = new HashSet<>(
-                userInteractionRepository.findByUserId(userId).stream()
-                        .map(UserInteraction::getEventId).toList());
+        // Собираем ID всех «других» мероприятий
+        List<Long> otherEventIds = similarities.stream()
+                .map(es -> (es.getEventA() == eventId) ? es.getEventB() : es.getEventA())
+                .toList();
+
+        // фильтр в БД — только те, с которыми пользователь взаимодействовал
+        Set<Long> userEvents = userInteractionRepository
+                .findEventIdsByUserIdAndEventIdIn(userId, otherEventIds);
 
         return similarities.stream()
                 .map(es -> {

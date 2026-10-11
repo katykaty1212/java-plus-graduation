@@ -18,7 +18,8 @@ public class SimilarityProducer {
     private String eventsSimilarityTopic;
 
     public void send(EventSimilarityAvro msg) {
-        kafkaTemplate.send(eventsSimilarityTopic, msg);
+        String key = msg.getEventA() + "-" + msg.getEventB();
+        kafkaTemplate.send(eventsSimilarityTopic, key, msg);
         log.debug("Отправлено сходство: A={}, B={}, score={}",
                 msg.getEventA(), msg.getEventB(), msg.getScore());
     }

@@ -3,12 +3,7 @@ server:
 
 grpc:
   server:
-    port: 9096
-
-eureka:
-  instance:
-    non-secure-port: 9096
-    non-secure-port-enabled: true
+    port: 0
 
 spring:
   datasource:

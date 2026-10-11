@@ -8,6 +8,7 @@ import ru.practicum.analyzer.model.UserInteraction;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface UserInteractionRepository extends JpaRepository<UserInteraction, Long> {
 
@@ -26,4 +27,14 @@ public interface UserInteractionRepository extends JpaRepository<UserInteraction
     /** Сумма весов по мероприятиям. */
     @Query("SELECT ui.eventId, SUM(ui.weight) FROM UserInteraction ui WHERE ui.eventId IN :eventIds GROUP BY ui.eventId")
     List<Object[]> sumWeightsByEventIds(@Param("eventIds") List<Long> eventIds);
+
+    /** eventId, с которыми пользователь взаимодействовал, среди переданных (фильтр в БД). */
+    @Query("SELECT ui.eventId FROM UserInteraction ui WHERE ui.userId = :userId AND ui.eventId IN :eventIds")
+    Set<Long> findEventIdsByUserIdAndEventIdIn(@Param("userId") Long userId,
+                                               @Param("eventIds") List<Long> eventIds);
+
+    /** batch — получить веса пользователя для набора мероприятий (для N+1 fix). */
+    @Query("SELECT ui FROM UserInteraction ui WHERE ui.userId = :userId AND ui.eventId IN :eventIds")
+    List<UserInteraction> findAllByUserIdAndEventIdIn(@Param("userId") Long userId,
+                                                      @Param("eventIds") List<Long> eventIds);
 }

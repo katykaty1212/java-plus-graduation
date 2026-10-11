@@ -11,6 +11,7 @@ import java.util.Set;
  * Хранит:
  * - веса пользователей по мероприятиям: Map<eventId, Map<userId, weight>>
  * - суммы весов мероприятий: Map<eventId, sumWeights>
+ * - обратный индекс: Map<userId, Set<eventId>> — для быстрого поиска мероприятий пользователя
  */
 @Component
 public class WeightsState {
@@ -20,6 +21,9 @@ public class WeightsState {
 
     /** eventId -> сумма весов */
     private final Map<Long, Double> sums = new HashMap<>();
+
+    /** userId -> множество eventId, с которыми пользователь взаимодействовал (обратный индекс) */
+    private final Map<Long, Set<Long>> userEvents = new HashMap<>();
 
     /**
      * Обновить вес пользователя для мероприятия.
@@ -37,6 +41,10 @@ public class WeightsState {
         double delta = (oldWeight == null) ? newWeight : (newWeight - oldWeight);
         userWeights.put(userId, newWeight);
         sums.merge(eventId, delta, Double::sum);
+
+        // поддерживаем обратный индекс user -> events
+        userEvents.computeIfAbsent(userId, k -> new HashSet<>()).add(eventId);
+
         return new UpdateResult(true, delta, oldWeight == null ? 0.0 : oldWeight);
     }
 
@@ -54,17 +62,15 @@ public class WeightsState {
 
     /**
      * Вернуть мероприятия, с которыми пользователь уже взаимодействовал
-     * (кроме указанного eventId).
+     * (кроме указанного eventId). Поиск O(1) через обратный индекс.
      */
     public synchronized Set<Long> getEventsByUser(long userId, long excludeEventId) {
-        Set<Long> result = new HashSet<>();
-        for (Map.Entry<Long, Map<Long, Double>> entry : weights.entrySet()) {
-            long eventId = entry.getKey();
-            if (eventId == excludeEventId) continue;
-            if (entry.getValue().containsKey(userId)) {
-                result.add(eventId);
-            }
+        Set<Long> events = userEvents.getOrDefault(userId, Set.of());
+        if (events.isEmpty() || !events.contains(excludeEventId)) {
+            return new HashSet<>(events);
         }
+        Set<Long> result = new HashSet<>(events);
+        result.remove(excludeEventId);
         return result;
     }
 

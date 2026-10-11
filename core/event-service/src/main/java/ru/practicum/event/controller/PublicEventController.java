@@ -55,7 +55,7 @@ public class PublicEventController {
     @GetMapping("/{id}")
     public EventFullDto getEvent(
             @PathVariable Long id,
-            @RequestHeader(value = "X-EWM-USER-ID", required = false) Long userId) {
+            @RequestHeader(value = "X-EWM-USER-ID") Long userId) {
 
         log.info("Запрос на получение события с id={}, userId={}", id, userId);
         return eventService.getPublishedEventById(id, userId);

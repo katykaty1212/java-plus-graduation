@@ -3,12 +3,7 @@ server:
 
 grpc:
   server:
-    port: 9095
-
-eureka:
-  instance:
-    non-secure-port: 9095
-    non-secure-port-enabled: true
+    port: 0
 
 spring:
   kafka:

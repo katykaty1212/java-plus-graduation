@@ -27,3 +27,12 @@ grpc:
       enableKeepAlive: true
       keepAliveWithoutCalls: true
       negotiationType: plaintext
+
+net:
+  devh:
+    boot:
+      grpc:
+        client:
+          nameresolver:
+            discovery-client:
+              service-metadata-keys: gRPC.port

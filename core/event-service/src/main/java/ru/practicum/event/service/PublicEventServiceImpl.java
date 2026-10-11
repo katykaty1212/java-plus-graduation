@@ -139,9 +139,7 @@ public class PublicEventServiceImpl implements PublicEventService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        if (userId != null) {
-            collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_VIEW);
-        }
+        collectorClient.sendUserAction(userId, eventId, ActionTypeProto.ACTION_VIEW);
 
         Long confirmedLong = requestClient.countByEventAndStatus(eventId, RequestStatus.CONFIRMED);
         int confirmedRequests = confirmedLong != null ? confirmedLong.intValue() : 0;
@@ -159,6 +157,7 @@ public class PublicEventServiceImpl implements PublicEventService {
     public List<EventShortDto> getRecommendations(Long userId, int maxResults) {
         List<Long> recommendedIds = analyzerClient
                 .getRecommendationsForUser(userId, maxResults)
+                .stream()
                 .map(RecommendedEventProto::getEventId)
                 .collect(Collectors.toList());
 
