@@ -14,7 +14,7 @@ import ru.practicum.stats.proto.collector.UserActionProto;
 @RequiredArgsConstructor
 public class UserActionServiceImpl implements UserActionService {
 
-    private final KafkaTemplate<String, UserActionAvro> kafkaTemplate;
+    private final KafkaTemplate<Long, UserActionAvro> kafkaTemplate;
     private final UserActionMapper mapper;
 
     @Value("${kafka.topics.user-actions}")
@@ -23,8 +23,13 @@ public class UserActionServiceImpl implements UserActionService {
     @Override
     public void collectUserAction(UserActionProto action) {
         UserActionAvro avro = mapper.toAvro(action);
-        String key = String.valueOf(avro.getEventId());
-        kafkaTemplate.send(userActionsTopic, key, avro);
+        kafkaTemplate.send(
+                userActionsTopic,
+                null,
+                avro.getTimestamp().toEpochMilli(),
+                avro.getEventId(),
+                avro
+        );
         log.info("Отправлено действие: userId={}, eventId={}, actionType={}",
                 avro.getUserId(), avro.getEventId(), avro.getActionType());
     }

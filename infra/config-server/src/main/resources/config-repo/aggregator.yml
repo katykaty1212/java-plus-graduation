@@ -12,7 +12,7 @@ spring:
     consumer:
       group-id: aggregator
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      key-deserializer: org.apache.kafka.common.serialization.LongDeserializer
       value-deserializer: ru.practicum.ewm.stats.avro.UserActionAvroDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

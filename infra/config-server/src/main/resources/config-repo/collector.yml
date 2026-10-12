@@ -8,9 +8,6 @@ grpc:
 spring:
   kafka:
     bootstrap-servers: localhost:9092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: ru.practicum.ewm.stats.avro.AvroSerializer
 
 kafka:
   topics:
