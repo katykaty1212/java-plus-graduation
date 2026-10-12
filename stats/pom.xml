@@ -17,8 +17,18 @@
     <modules>
         <module>stats-dto</module>
         <module>stats-client</module>
+        <module>stats-proto</module>
+        <module>stats-avro</module>
         <module>stats-server</module>
     </modules>
+
+    <properties>
+        <protobuf.version>3.25.5</protobuf.version>
+        <grpc.version>1.68.1</grpc.version>
+        <protobuf-plugin.version>0.6.1</protobuf-plugin.version>
+        <os-plugin.version>1.7.1</os-plugin.version>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -42,5 +52,17 @@
             <artifactId>spring-web</artifactId>
         </dependency>
     </dependencies>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 </project>

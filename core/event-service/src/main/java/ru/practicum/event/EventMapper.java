@@ -29,10 +29,10 @@ public class EventMapper {
     }
 
     public static EventShortDto toEventShortDto(Event event) {
-        return toEventShortDtoWithStats(event, 0, 0L);
+        return toEventShortDtoWithStats(event, 0, 0.0);
     }
 
-    public static EventShortDto toEventShortDtoWithStats(Event event, int confirmedRequests, Long views) {
+    public static EventShortDto toEventShortDtoWithStats(Event event, int confirmedRequests, Double rating) {
         if (event == null) {
             return null;
         }
@@ -44,7 +44,7 @@ public class EventMapper {
                 .paid(event.getPaid())
                 .title(event.getTitle())
                 .confirmedRequests(confirmedRequests)
-                .views(views != null ? views : 0L);
+                .rating(rating != null ? rating : 0.0);
 
         if (event.getCategory() != null) {
             builder.category(CategoryMapper.toCategoryDto(event.getCategory()));
@@ -53,20 +53,20 @@ public class EventMapper {
         return builder.build();
     }
 
-    public static EventShortDto toEventShortDtoWithStats(Event event, int confirmedRequests, Long views,
+    public static EventShortDto toEventShortDtoWithStats(Event event, int confirmedRequests, Double rating,
                                                          UserShortDto initiator) {
-        EventShortDto dto = toEventShortDtoWithStats(event, confirmedRequests, views);
+        EventShortDto dto = toEventShortDtoWithStats(event, confirmedRequests, rating);
         if (dto != null) {
             dto.setInitiator(initiator);
         }
         return dto;
     }
 
-    public static EventFullDto toEventFullDtoWithStats(Event event, int confirmedRequests, Long views) {
-        return toEventFullDtoWithStats(event, confirmedRequests, views, null);
+    public static EventFullDto toEventFullDtoWithStats(Event event, int confirmedRequests, Double rating) {
+        return toEventFullDtoWithStats(event, confirmedRequests, rating, null);
     }
 
-    public static EventFullDto toEventFullDtoWithStats(Event event, int confirmedRequests, Long views,
+    public static EventFullDto toEventFullDtoWithStats(Event event, int confirmedRequests, Double rating,
                                                        UserShortDto initiator) {
         if (event == null) {
             return null;
@@ -87,7 +87,7 @@ public class EventMapper {
         dto.setState(event.getState());
 
         dto.setConfirmedRequests(confirmedRequests);
-        dto.setViews(views != null ? views : 0L);
+        dto.setRating(rating != null ? rating : 0.0);
 
         if (event.getCategory() != null) {
             dto.setCategory(CategoryMapper.toCategoryDto(event.getCategory()));

@@ -24,5 +24,24 @@ feign:
   httpclient:
     enabled: true
 
-stats:
-  service-id: stats-server
+grpc:
+  client:
+    collector:
+      address: 'discovery:///collector'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+    analyzer:
+      address: 'discovery:///analyzer'
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
+      negotiationType: plaintext
+
+net:
+  devh:
+    boot:
+      grpc:
+        client:
+          nameresolver:
+            discovery-client:
+              service-metadata-keys: gRPC.port

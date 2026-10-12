@@ -7,9 +7,10 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.category.CategoryRepository;
 import ru.practicum.category.dto.CategoryDto;
 import ru.practicum.category.model.Category;
+import ru.practicum.client.AnalyzerClient;
 import ru.practicum.client.RequestClient;
 import ru.practicum.client.UserClient;
-import ru.practicum.event.dto.EventFullDto;
+import ru.practicum.event.EventMapper;
 import ru.practicum.event.EventRepository;
 import ru.practicum.event.dto.*;
 import ru.practicum.event.model.Event;
@@ -25,7 +26,10 @@ import ru.practicum.user.UserShortDto;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,6 +41,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     private final CategoryRepository categoryRepository;
     private final UserClient userClient;
     private final RequestClient requestClient;
+    private final AnalyzerClient analyzerClient;
 
     @Override
     public List<EventShortDto> getEvents(Long userId, int from, int size) {
@@ -45,15 +50,17 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         UserShortDto initiator = userClient.getUser(userId);
 
-        return eventRepository.findAllByInitiatorId(userId, page).stream()
-                .map(e -> toEventShortDto(e, initiator))
+        List<Event> events = eventRepository.findAllByInitiatorId(userId, page).getContent();
+        Map<Long, Double> ratings = fetchRatings(events.stream().map(Event::getId).toList());
+
+        return events.stream()
+                .map(e -> toEventShortDto(e, initiator, ratings.getOrDefault(e.getId(), 0.0)))
                 .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public EventFullDto addEvent(Long userId, NewEventDto newEventDto) {
-        // Проверяем, что пользователь существует (через клиент)
         if (!userClient.existsById(userId)) {
             throw new NotFoundException("User with id=" + userId + " was not found");
         }
@@ -78,11 +85,12 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                 .initiatorId(userId)
                 .createdOn(LocalDateTime.now())
                 .state(EventState.PENDING)
+                .rating(0.0)
                 .build();
 
         Event saved = eventRepository.save(event);
         UserShortDto initiator = userClient.getUser(userId);
-        return toEventFullDto(saved, initiator);
+        return toEventFullDto(saved, initiator, 0.0);
     }
 
     @Override
@@ -92,7 +100,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                 .orElseThrow(() -> new NotFoundException("Event with id=" + eventId + " was not found"));
 
         UserShortDto initiator = userClient.getUser(userId);
-        return toEventFullDto(event, initiator);
+        double rating = fetchRatings(List.of(eventId)).getOrDefault(eventId, 0.0);
+        return toEventFullDto(event, initiator, rating);
     }
 
     @Override
@@ -140,7 +149,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
         Event saved = eventRepository.save(event);
         UserShortDto initiator = userClient.getUser(userId);
-        return toEventFullDto(saved, initiator);
+        double rating = fetchRatings(List.of(eventId)).getOrDefault(eventId, 0.0);
+        return toEventFullDto(saved, initiator, rating);
     }
 
     @Override
@@ -209,7 +219,20 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         }
     }
 
-    private EventShortDto toEventShortDto(Event event, UserShortDto initiator) {
+    private Map<Long, Double> fetchRatings(List<Long> eventIds) {
+        if (eventIds.isEmpty()) return Collections.emptyMap();
+        Map<Long, Double> result = new HashMap<>();
+        try {
+            analyzerClient.getInteractionsCount(eventIds).forEach(
+                    proto -> result.put(proto.getEventId(), proto.getScore())
+            );
+        } catch (Exception e) {
+            // Analyzer недоступен — не роняем операцию
+        }
+        return result;
+    }
+
+    private EventShortDto toEventShortDto(Event event, UserShortDto initiator, double rating) {
         int confirmed = requestClient.countByEventAndStatus(event.getId(), RequestStatus.CONFIRMED).intValue();
         return EventShortDto.builder()
                 .id(event.getId())
@@ -220,11 +243,11 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                 .initiator(initiator)
                 .paid(event.getPaid())
                 .title(event.getTitle())
-                .views(0L)
+                .rating(rating)
                 .build();
     }
 
-    private EventFullDto toEventFullDto(Event event, UserShortDto initiator) {
+    private EventFullDto toEventFullDto(Event event, UserShortDto initiator, double rating) {
         int confirmed = requestClient.countByEventAndStatus(event.getId(), RequestStatus.CONFIRMED).intValue();
         return EventFullDto.builder()
                 .id(event.getId())
@@ -242,7 +265,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
                 .requestModeration(event.getRequestModeration())
                 .state(event.getState())
                 .title(event.getTitle())
-                .views(0L)
+                .rating(rating)
                 .build();
     }
 }

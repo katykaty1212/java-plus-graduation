@@ -58,4 +58,8 @@ public class Event {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private EventState state;
+
+    @Column(name = "rating", nullable = false)
+    @Builder.Default
+    private Double rating = 0.0;
 }

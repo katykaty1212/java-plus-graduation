@@ -70,4 +70,12 @@ public class InternalRequestController {
                 .map(RequestMapper::toParticipationRequestDto)
                 .collect(Collectors.toList());
     }
+
+    @GetMapping("/exists")
+    public Boolean existsByRequesterIdAndEventIdAndStatus(
+            @RequestParam Long userId,
+            @RequestParam Long eventId,
+            @RequestParam RequestStatus status) {
+        return requestRepository.existsByRequesterIdAndEventIdAndStatus(userId, eventId, status);
+    }
 }
