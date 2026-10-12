@@ -5,6 +5,11 @@ grpc:
   server:
     port: 0
 
+eureka:
+  instance:
+    non-secure-port-enabled: true
+    prefer-ip-address: true
+
 spring:
   kafka:
     bootstrap-servers: localhost:9092

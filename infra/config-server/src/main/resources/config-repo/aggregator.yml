@@ -3,8 +3,8 @@ server:
 
 eureka:
   instance:
-    non-secure-port: 8097
     non-secure-port-enabled: true
+    prefer-ip-address: true
 
 spring:
   kafka:
